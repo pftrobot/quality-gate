@@ -1,24 +1,24 @@
 import { expect, test } from "@playwright/test"
+import { LoginPage } from "../pages/LoginPage"
 
-const BASE_URL = "https://toit-nu.vercel.app/"
 const LOGIN_EMAIL = process.env.TOIT_LOGIN_ID
 const LOGIN_PASSWORD = process.env.TOIT_LOGIN_PASSWORD
 const LOGIN_DUMMY_EMAIL = "email@email.com"
 const LOGIN_DUMMY_PASSWORD = "Abcde123!"
 
-test("유효한 계정으로 로그인하면 캘린더 화면이 표시된다", async ({ page }) => {
-  // 환경변수 검증
-  if (!LOGIN_EMAIL || !LOGIN_PASSWORD) {
-    throw new Error("TOIT_LOGIN_ID와 TOIT_LOGIN_PASSWORD 환경변수가 필요합니다.")
-  }
+// 환경변수 검증
+if (!LOGIN_EMAIL || !LOGIN_PASSWORD) {
+  throw new Error("TOIT_LOGIN_ID와 TOIT_LOGIN_PASSWORD 환경변수가 필요합니다.")
+}
 
+test("유효한 계정으로 로그인하면 캘린더 화면이 표시된다", async ({ page }) => {
   const calendarTab = page.getByRole("tab", { name: /Calendar$/ })
 
-  await page.goto(BASE_URL)
+  const loginPage = new LoginPage(page)
 
-  await page.getByRole("textbox", { name: "이메일" }).fill(LOGIN_EMAIL)
-  await page.getByLabel("비밀번호").fill(LOGIN_PASSWORD)
-  await page.getByRole("button", { name: "로그인", exact: true }).click()
+  await page.goto("/")
+
+  await loginPage.login(LOGIN_EMAIL, LOGIN_PASSWORD)
 
   await expect(calendarTab).toBeVisible()
   await expect(calendarTab).toHaveAttribute("aria-selected", "true")
@@ -50,13 +50,12 @@ const requiredFieldCases: LoginInputCase[] = [
 
 for (const { title, email, password } of requiredFieldCases) {
   test(title, async ({ page }) => {
-    await page.goto(BASE_URL)
+    const loginPage = new LoginPage(page)
 
-    await page.getByRole("textbox", { name: "이메일" }).fill(email)
-    await page.getByLabel("비밀번호").fill(password)
+    await page.goto("/")
 
-    // dialog 이벤트 등록
-    page.once("dialog", async (dialog) => {
+    // dialog 이벤트 대기
+    const dialogPromise = page.waitForEvent("dialog").then(async (dialog) => {
       try {
         expect(dialog.type()).toBe("alert")
         expect(dialog.message()).toContain("이메일과 비밀번호를 입력해주세요")
@@ -65,7 +64,7 @@ for (const { title, email, password } of requiredFieldCases) {
       }
     })
 
-    await page.getByRole("button", { name: "로그인", exact: true }).click()
+    await Promise.all([loginPage.login(email, password), dialogPromise])
   })
 }
 
@@ -86,12 +85,12 @@ const invalidCredentialCases: LoginInputCase[] = [
 
 for (const { title, email, password } of invalidCredentialCases) {
   test(title, async ({ page }) => {
-    await page.goto(BASE_URL)
+    const loginPage = new LoginPage(page)
 
-    await page.getByRole("textbox", { name: "이메일" }).fill(email)
-    await page.getByLabel("비밀번호").fill(password)
+    await page.goto("/")
 
-    page.once("dialog", async (dialog) => {
+    // dialog 이벤트 대기
+    const dialogPromise = page.waitForEvent("dialog").then(async (dialog) => {
       try {
         expect(dialog.type()).toBe("alert")
         expect(dialog.message()).toContain("이메일 또는 비밀번호가 올바르지 않습니다")
@@ -100,6 +99,6 @@ for (const { title, email, password } of invalidCredentialCases) {
       }
     })
 
-    await page.getByRole("button", { name: "로그인", exact: true }).click()
+    await Promise.all([loginPage.login(email, password), dialogPromise])
   })
 }
