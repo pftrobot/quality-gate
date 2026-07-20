@@ -1,5 +1,5 @@
-import { expect, test } from "@playwright/test"
-import { LoginPage } from "../pages/LoginPage"
+import { expect } from "@playwright/test"
+import { test } from "../fixtures/pages.fixture"
 
 const LOGIN_EMAIL = process.env.TOIT_LOGIN_ID
 const LOGIN_PASSWORD = process.env.TOIT_LOGIN_PASSWORD
@@ -11,10 +11,8 @@ if (!LOGIN_EMAIL || !LOGIN_PASSWORD) {
   throw new Error("TOIT_LOGIN_ID와 TOIT_LOGIN_PASSWORD 환경변수가 필요합니다.")
 }
 
-test("유효한 계정으로 로그인하면 캘린더 화면이 표시된다", async ({ page }) => {
+test("유효한 계정으로 로그인하면 캘린더 화면이 표시된다", async ({ page, loginPage }) => {
   const calendarTab = page.getByRole("tab", { name: /Calendar$/ })
-
-  const loginPage = new LoginPage(page)
 
   await page.goto("/")
 
@@ -49,9 +47,7 @@ const requiredFieldCases: LoginInputCase[] = [
 ]
 
 for (const { title, email, password } of requiredFieldCases) {
-  test(title, async ({ page }) => {
-    const loginPage = new LoginPage(page)
-
+  test(title, async ({ page, loginPage }) => {
     await page.goto("/")
 
     // dialog 이벤트 대기
@@ -84,9 +80,7 @@ const invalidCredentialCases: LoginInputCase[] = [
 ]
 
 for (const { title, email, password } of invalidCredentialCases) {
-  test(title, async ({ page }) => {
-    const loginPage = new LoginPage(page)
-
+  test(title, async ({ page, loginPage }) => {
     await page.goto("/")
 
     // dialog 이벤트 대기
