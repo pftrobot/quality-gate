@@ -11,10 +11,12 @@ if (!LOGIN_EMAIL || !LOGIN_PASSWORD) {
   throw new Error("TOIT_LOGIN_ID와 TOIT_LOGIN_PASSWORD 환경변수가 필요합니다.")
 }
 
+test.beforeEach(async ({ page }) => {
+  await page.goto("/")
+})
+
 test("유효한 계정으로 로그인하면 캘린더 화면이 표시된다", async ({ page, loginPage }) => {
   const calendarTab = page.getByRole("tab", { name: /Calendar$/ })
-
-  await page.goto("/")
 
   await loginPage.login(LOGIN_EMAIL, LOGIN_PASSWORD)
 
@@ -48,8 +50,6 @@ const requiredFieldCases: LoginInputCase[] = [
 
 for (const { title, email, password } of requiredFieldCases) {
   test(title, async ({ page, loginPage }) => {
-    await page.goto("/")
-
     // dialog 이벤트 대기
     const dialogPromise = page.waitForEvent("dialog").then(async (dialog) => {
       try {
@@ -81,8 +81,6 @@ const invalidCredentialCases: LoginInputCase[] = [
 
 for (const { title, email, password } of invalidCredentialCases) {
   test(title, async ({ page, loginPage }) => {
-    await page.goto("/")
-
     // dialog 이벤트 대기
     const dialogPromise = page.waitForEvent("dialog").then(async (dialog) => {
       try {

@@ -38,16 +38,32 @@ export default defineConfig({
     {
       name: "chromium",
       use: { ...devices["Desktop Chrome"] },
+      testMatch: /auth\.spec\.ts/,
+    },
+
+    {
+      name: "authenticated-chromium",
+      use: { ...devices["Desktop Chrome"], storageState: "playwright/.auth/user.json" },
+      testMatch: /calendar\.spec\.ts/,
+      dependencies: ["setup"],
     },
 
     {
       name: "firefox",
       use: { ...devices["Desktop Firefox"] },
+      testMatch: /auth\.spec\.ts/,
     },
 
     {
       name: "webkit",
       use: { ...devices["Desktop Safari"] },
+      testMatch: /auth\.spec\.ts/,
+    },
+
+    {
+      name: "setup",
+      testMatch: /.*\.setup\.ts/,
+      use: { ...devices["Desktop Chrome"] },
     },
 
     /* Test against mobile viewports. */
