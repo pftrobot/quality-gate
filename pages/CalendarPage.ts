@@ -3,7 +3,6 @@ import type { Locator, Page } from "@playwright/test"
 // 캘린더 상세 패널이 가질 수 있는 화면 상태
 export type CalendarSheetStage = "collapsed" | "half" | "expanded"
 
-// 앱의 한국어 날짜 표기와 동일한 요일 문자열을 만들기 위해 사용한다.
 const WEEKDAYS = ["일", "월", "화", "수", "목", "금", "토"] as const
 
 /** 캘린더 화면의 Locator와 사용자 행동을 담당하는 Page */
@@ -178,7 +177,11 @@ export class CalendarPage {
     deltaY?: number
     targetY?: number
   }): Promise<void> {
-    const box = await this.detailPanel.boundingBox()
+    const panel = this.detailPanel
+
+    // 상태 전환 애니메이션이 끝난 뒤 좌표를 계산하도록 actionability의 stable 검사 이용
+    await panel.hover({ position: { x: 24, y: 24 } })
+    const box = await panel.boundingBox()
 
     if (!box) {
       throw new Error("캘린더 상세 패널의 위치를 확인할 수 없습니다.")
