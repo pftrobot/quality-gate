@@ -1,7 +1,9 @@
 import { expect } from "@playwright/test"
 import { test } from "@/fixtures/pages.fixture"
 import {
+  deletePersonalScheduleByTestIdIfPresent,
   deletePersonalScheduleIfPresent,
+  deletePersonalSchedulesIfPresent,
   openPersonalSchedule,
   uniqueTitle,
 } from "@/utils/personalScheduleTestUtils"
@@ -83,15 +85,18 @@ test("제목을 입력하지 않고 저장하면 기본 제목 '할 일'로 일�
   habitSettingsPage,
 }) => {
   let createdTaskTestId: string | undefined
+  let lastTaskTestIdBefore: string | null = null
+  let scheduleSaved = false
 
   try {
     const hasSchedulesBefore = (await habitSettingsPage.scheduleRows().count()) > 0
-    const lastTaskTestIdBefore = hasSchedulesBefore
+    lastTaskTestIdBefore = hasSchedulesBefore
       ? await habitSettingsPage.lastScheduleRowTestId()
       : null
 
     // 일정 생성
     await habitSettingsPage.createSchedule()
+    scheduleSaved = true
     await expect(habitSettingsPage.listHeading).toBeVisible()
 
     let candidateTestId: string | null = null
@@ -117,15 +122,12 @@ test("제목을 입력하지 않고 저장하면 기본 제목 '할 일'로 일�
     await expect(habitSettingsPage.titleInput).toHaveValue("할 일")
   } finally {
     // 기본값 검증과 무관한 삭제는 cleanup으로만 수행
-    if (createdTaskTestId !== undefined) {
-      await calendarPage.goto()
-      await openPersonalSchedule(calendarPage, habitSettingsPage)
-
-      const createdTaskRow = habitSettingsPage.scheduleRow(createdTaskTestId)
-      if ((await createdTaskRow.count()) > 0) {
-        await habitSettingsPage.scheduleEditButton(createdTaskTestId, "할 일").click()
-        await habitSettingsPage.deleteOpenSchedule()
-      }
+    if (scheduleSaved) {
+      await deletePersonalScheduleByTestIdIfPresent(calendarPage, habitSettingsPage, {
+        testId: createdTaskTestId,
+        previousLastTestId: lastTaskTestIdBefore,
+        title: "할 일",
+      })
     }
   }
 })
@@ -149,8 +151,10 @@ test.describe("내 일정 수정/삭제", () => {
       await expect(habitSettingsPage.scheduleItem(updatedTitle)).toBeVisible()
     } finally {
       // 수정 도중 실패해도 원본과 수정된 제목을 모두 확인해 잔여 데이터를 삭제
-      await deletePersonalScheduleIfPresent(calendarPage, habitSettingsPage, originalTitle)
-      await deletePersonalScheduleIfPresent(calendarPage, habitSettingsPage, updatedTitle)
+      await deletePersonalSchedulesIfPresent(calendarPage, habitSettingsPage, [
+        updatedTitle,
+        originalTitle,
+      ])
     }
   })
 

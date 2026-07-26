@@ -178,6 +178,16 @@ export class HabitSettingsPage {
     return (await item.count()) > 0
   }
 
+  async revealScheduleRowInList(testId: string): Promise<boolean> {
+    const row = this.scheduleRow(testId)
+
+    if ((await row.count()) > 0) return true
+
+    await this.scrollScheduleListUntilVisible(row)
+
+    return (await row.count()) > 0
+  }
+
   async updateTitle(title: string): Promise<void> {
     await this.titleInput.fill(title)
     await this.saveButton.click()

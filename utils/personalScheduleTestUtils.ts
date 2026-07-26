@@ -29,13 +29,75 @@ export async function deletePersonalScheduleIfPresent(
   habitSettingsPage: HabitSettingsPage,
   title: string,
 ): Promise<void> {
+  await deletePersonalSchedulesIfPresent(calendarPage, habitSettingsPage, [title])
+}
+
+export async function deletePersonalSchedulesIfPresent(
+  calendarPage: CalendarPage,
+  habitSettingsPage: HabitSettingsPage,
+  titles: readonly string[],
+): Promise<void> {
   await calendarPage.goto()
   await openPersonalSchedule(calendarPage, habitSettingsPage)
 
-  const item = habitSettingsPage.scheduleItem(title)
-  if (!(await habitSettingsPage.revealScheduleInList(title))) return
+  for (const title of new Set(titles)) {
+    const item = habitSettingsPage.scheduleItem(title)
+    if (!(await habitSettingsPage.revealScheduleInList(title))) continue
 
-  await item.click()
+    await item.click()
+    await habitSettingsPage.deleteOpenSchedule()
+    await expect(item).toHaveCount(0)
+  }
+}
+
+// 제목이 중복될 수 있는 일정을 test ID로 찾아 삭제
+// 본 검증에서 ID를 얻지 못한 경우에는 저장 전 마지막 ID와 현재 마지막 ID를 비교해 생성 항목을 다시 식별함
+export async function deletePersonalScheduleByTestIdIfPresent(
+  calendarPage: CalendarPage,
+  habitSettingsPage: HabitSettingsPage,
+  {
+    testId,
+    previousLastTestId,
+    title,
+  }: {
+    testId?: string
+    previousLastTestId: string | null
+    title: string
+  },
+): Promise<void> {
+  await calendarPage.goto()
+  await openPersonalSchedule(calendarPage, habitSettingsPage)
+
+  let cleanupTestId = testId
+
+  if (cleanupTestId === undefined) {
+    let candidateTestId: string | null = null
+
+    await expect
+      .poll(async () => {
+        try {
+          candidateTestId = await habitSettingsPage.lastScheduleRowTestId()
+        } catch {
+          candidateTestId = null
+        }
+        return candidateTestId
+      })
+      .not.toBe(previousLastTestId)
+
+    cleanupTestId = candidateTestId ?? undefined
+  }
+
+  if (cleanupTestId === undefined) return
+  if (!(await habitSettingsPage.revealScheduleRowInList(cleanupTestId))) return
+
+  const row = habitSettingsPage.scheduleRow(cleanupTestId)
+  const editButton = habitSettingsPage.scheduleEditButton(cleanupTestId, title)
+
+  if ((await editButton.count()) === 0) {
+    throw new Error(`cleanup 대상 일정의 제목을 확인할 수 없습니다: ${cleanupTestId}`)
+  }
+
+  await editButton.click()
   await habitSettingsPage.deleteOpenSchedule()
-  await expect(item).toHaveCount(0)
+  await expect(row).toHaveCount(0)
 }

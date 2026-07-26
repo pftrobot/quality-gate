@@ -243,10 +243,15 @@ test.describe("일정 완료 상태", () => {
     // 기존 상태 기억 (테스트가 끝날 때 테스트 전과 같은 상태인지 확인하기 위함)
     const initiallyChecked = await checkbox.isChecked()
 
-    await checkbox.click()
-    await expect(checkbox).toBeChecked({ checked: !initiallyChecked })
-    await checkbox.click()
-    await expect(checkbox).toBeChecked({ checked: initiallyChecked })
+    try {
+      await checkbox.click()
+      await expect(checkbox).toBeChecked({ checked: !initiallyChecked })
+    } finally {
+      if ((await checkbox.isChecked()) !== initiallyChecked) {
+        await checkbox.click()
+      }
+      await expect(checkbox).toBeChecked({ checked: initiallyChecked })
+    }
   })
 })
 
