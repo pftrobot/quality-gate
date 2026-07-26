@@ -1,10 +1,84 @@
 import { expect, type TestInfo } from "@playwright/test"
 import { test } from "../fixtures/pages.fixture"
 import type { CalendarPage } from "../pages/CalendarPage"
-import type { HabitSettingsPage } from "../pages/HabitSettingsPage"
+import type { HabitSettingsPage, ScheduleRecurrence } from "../pages/HabitSettingsPage"
 
 const TEAM_TASK_TITLE = process.env.TOIT_TEAM_TASK_TITLE
 const TEAM_TASK_DATE = process.env.TOIT_TEAM_TASK_DATE
+const todayAtTestStart = new Date()
+todayAtTestStart.setHours(0, 0, 0, 0)
+
+type RecurrenceCalendarCase = {
+  testName: string
+  titlePrefix: string
+  recurrence: ScheduleRecurrence
+  startDate?: Date
+  endDate?: Date
+  expectedDates: readonly Date[]
+  excludedDates: readonly Date[]
+}
+
+const recurrenceCalendarCases: readonly RecurrenceCalendarCase[] = [
+  {
+    testName: "매일 반복 일정은 설정한 기간과 반복 규칙에 맞는 날짜에만 표시된다",
+    titlePrefix: "e2e-daily",
+    recurrence: { type: "매일" },
+    startDate: new Date(2026, 6, 1),
+    endDate: new Date(2026, 6, 5),
+    expectedDates: [new Date(2026, 6, 1), new Date(2026, 6, 3), new Date(2026, 6, 5)],
+    excludedDates: [new Date(2026, 5, 30), new Date(2026, 6, 6)],
+  },
+  {
+    testName: "매주 반복 일정은 설정한 기간과 반복 규칙에 맞는 날짜에만 표시된다",
+    titlePrefix: "e2e-weekly",
+    recurrence: { type: "매주", weekdays: ["수", "토"] },
+    startDate: new Date(2026, 6, 1),
+    endDate: new Date(2026, 6, 20),
+    expectedDates: [new Date(2026, 6, 1), new Date(2026, 6, 4), new Date(2026, 6, 18)],
+    excludedDates: [new Date(2026, 5, 27), new Date(2026, 6, 2), new Date(2026, 6, 22)],
+  },
+  {
+    testName: "매달 반복 일정은 설정한 기간과 반복 규칙에 맞는 날짜에만 표시된다",
+    titlePrefix: "e2e-monthly",
+    recurrence: { type: "매달", dayOfMonth: 14 },
+    startDate: new Date(2026, 6, 1),
+    endDate: new Date(2026, 8, 30),
+    expectedDates: [new Date(2026, 6, 14), new Date(2026, 7, 14), new Date(2026, 8, 14)],
+    excludedDates: [new Date(2026, 5, 14), new Date(2026, 6, 15), new Date(2026, 9, 14)],
+  },
+  {
+    testName: "마감일이 없는 매일 반복 일정은 시작일로부터 1개월 동안 표시된다",
+    titlePrefix: "e2e-daily-default-end",
+    recurrence: { type: "매일" },
+    startDate: new Date(2026, 6, 1),
+    expectedDates: [new Date(2026, 6, 1), new Date(2026, 6, 15), new Date(2026, 7, 1)],
+    excludedDates: [new Date(2026, 5, 30), new Date(2026, 7, 2)],
+  },
+  {
+    testName: "마감일이 없는 매주 반복 일정은 시작일로부터 3개월 동안 표시된다",
+    titlePrefix: "e2e-weekly-default-end",
+    recurrence: { type: "매주", weekdays: ["수", "토"] },
+    startDate: new Date(2026, 6, 1),
+    expectedDates: [new Date(2026, 6, 1), new Date(2026, 6, 4), new Date(2026, 8, 30)],
+    excludedDates: [new Date(2026, 5, 27), new Date(2026, 6, 2), new Date(2026, 9, 3)],
+  },
+  {
+    testName: "마감일이 없는 매달 반복 일정은 시작일로부터 12개월 동안 표시된다",
+    titlePrefix: "e2e-monthly-default-end",
+    recurrence: { type: "매달", dayOfMonth: 14 },
+    startDate: new Date(2026, 6, 1),
+    expectedDates: [new Date(2026, 6, 14), new Date(2027, 0, 14), new Date(2027, 5, 14)],
+    excludedDates: [new Date(2026, 5, 14), new Date(2026, 6, 15), new Date(2027, 6, 14)],
+  },
+  {
+    testName: "시작일이 없는 매일 반복 일정은 오늘부터 표시된다",
+    titlePrefix: "e2e-daily-default-start",
+    recurrence: { type: "매일" },
+    endDate: addDays(todayAtTestStart, 4),
+    expectedDates: [todayAtTestStart, addDays(todayAtTestStart, 2), addDays(todayAtTestStart, 4)],
+    excludedDates: [addDays(todayAtTestStart, -1), addDays(todayAtTestStart, 5)],
+  },
+]
 
 // 상세 패널을 열 때 선택할 날짜 (이전/다음달 경계값이 아닌 15일로 기본 지정)
 const dateInCurrentMonth = (day = 15): Date => {
@@ -12,7 +86,7 @@ const dateInCurrentMonth = (day = 15): Date => {
   return new Date(now.getFullYear(), now.getMonth(), day)
 }
 
-const addDays = (date: Date, amount: number): Date => {
+function addDays(date: Date, amount: number): Date {
   const result = new Date(date)
   result.setDate(result.getDate() + amount)
   return result
@@ -44,7 +118,7 @@ async function deletePersonalScheduleIfPresent(
   await openPersonalSchedule(calendarPage, habitSettingsPage)
 
   const item = habitSettingsPage.scheduleItem(title)
-  if ((await item.count()) === 0) return
+  if (!(await habitSettingsPage.revealScheduleInList(title))) return
 
   await item.click()
   await habitSettingsPage.deleteOpenSchedule()
@@ -274,6 +348,41 @@ test("반복을 매주로 변경하면 반복 요일을 선택할 수 있다", a
   await habitSettingsPage.weekdayOption("월").click()
   await expect(habitSettingsPage.recurrenceOption("매주")).toHaveAttribute("aria-selected", "true")
   await expect(habitSettingsPage.weekdayOption("월")).toHaveAttribute("aria-selected", "true")
+})
+
+test.describe("반복 설정의 캘린더 반영", () => {
+  for (const recurrenceCase of recurrenceCalendarCases) {
+    test(recurrenceCase.testName, async ({ calendarPage, habitSettingsPage }, testInfo) => {
+      const title = uniqueTitle(recurrenceCase.titlePrefix, testInfo)
+
+      try {
+        await openPersonalSchedule(calendarPage, habitSettingsPage)
+        await habitSettingsPage.createRecurringSchedule({
+          title,
+          startDate: recurrenceCase.startDate,
+          endDate: recurrenceCase.endDate,
+          recurrence: recurrenceCase.recurrence,
+        })
+        await expect(habitSettingsPage.listHeading).toBeVisible()
+
+        await habitSettingsPage.backButton.click()
+
+        for (const date of recurrenceCase.expectedDates) {
+          await calendarPage.navigateToMonth(date)
+          await calendarPage.selectDate(date)
+          await expect(calendarPage.scheduleCheckbox(title)).toBeVisible()
+        }
+
+        for (const date of recurrenceCase.excludedDates) {
+          await calendarPage.navigateToMonth(date)
+          await calendarPage.selectDate(date)
+          await expect(calendarPage.scheduleCheckbox(title)).toHaveCount(0)
+        }
+      } finally {
+        await deletePersonalScheduleIfPresent(calendarPage, habitSettingsPage, title)
+      }
+    })
+  }
 })
 
 // 6-4. 이모지 검색 및 선택

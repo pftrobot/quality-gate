@@ -124,15 +124,23 @@ export class CalendarPage {
   }
 
   async navigateToMonth(target: Date): Promise<void> {
-    const now = new Date()
-    // 현재 월과 목표 월의 차이를 월 단위로 계산해 필요한 횟수만큼 이동
-    const monthDifference =
-      (target.getFullYear() - now.getFullYear()) * 12 + target.getMonth() - now.getMonth()
-    const button = monthDifference < 0 ? this.previousMonthButton : this.nextMonthButton
+    const targetMonthIndex = target.getFullYear() * 12 + target.getMonth()
 
-    for (let index = 0; index < Math.abs(monthDifference); index += 1) {
+    for (let attempt = 0; attempt < 24; attempt += 1) {
+      const currentMonth = await this.visibleMonth()
+      const currentMonthIndex = currentMonth.getFullYear() * 12 + currentMonth.getMonth()
+
+      if (currentMonthIndex === targetMonthIndex) return
+
+      const direction = currentMonthIndex < targetMonthIndex ? 1 : -1
+      const nextMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + direction, 1)
+      const button = direction === 1 ? this.nextMonthButton : this.previousMonthButton
+
       await button.click()
+      await this.monthTitle(nextMonth).waitFor({ state: "visible" })
     }
+
+    throw new Error(`${target.getFullYear()}년 ${target.getMonth() + 1}월로 이동하지 못했습니다.`)
   }
 
   async expandDetailPanel(): Promise<void> {
@@ -196,5 +204,24 @@ export class CalendarPage {
     await this.page.mouse.down()
     await this.page.mouse.move(startX + deltaX, endY, { steps: 12 })
     await this.page.mouse.up()
+  }
+
+  private async visibleMonth(): Promise<Date> {
+    const title = this.page
+      .getByRole("button", {
+        name: /^\d{4}년 \d{1,2}월, 월 선택$/,
+      })
+      .filter({ visible: true })
+      .first()
+    const label = await title.evaluate(
+      (element) => element.getAttribute("aria-label") ?? element.textContent?.trim() ?? "",
+    )
+    const match = label.match(/^(\d{4})년 (\d{1,2})월/)
+
+    if (!match) {
+      throw new Error(`현재 캘린더 월을 확인할 수 없습니다: ${label}`)
+    }
+
+    return new Date(Number(match[1]), Number(match[2]) - 1, 1)
   }
 }
