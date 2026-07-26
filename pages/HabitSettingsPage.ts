@@ -30,7 +30,7 @@ export class HabitSettingsPage {
   readonly editHeading: Locator
   readonly backButton: Locator
   readonly addButton: Locator
-  readonly saveButton: Locator
+  private readonly saveButton: Locator
   readonly titleInput: Locator
   readonly emojiButton: Locator
   readonly startDateSwitch: Locator
@@ -54,10 +54,6 @@ export class HabitSettingsPage {
 
   scheduleItem(title: string): Locator {
     // 일정 제목을 받아 테스트가 생성한 일정만 정확히 찾는다
-    return this.page.getByRole("button", { name: `${title} 수정`, exact: true })
-  }
-
-  scheduleItems(title: string): Locator {
     return this.page.getByRole("button", { name: `${title} 수정`, exact: true })
   }
 
@@ -105,11 +101,11 @@ export class HabitSettingsPage {
     return this.page.getByRole("button", { name, exact: true })
   }
 
-  monthDayOption(day: number): Locator {
+  private monthDayOption(day: number): Locator {
     return this.page.getByRole("button", { name: `${day}일`, exact: true })
   }
 
-  endedSchedulesButton(): Locator {
+  private endedSchedulesButton(): Locator {
     return this.page.getByRole("button", { name: /^종료된 일정 \(\d+\)/ })
   }
 

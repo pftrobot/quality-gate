@@ -8,17 +8,17 @@ const WEEKDAYS = ["일", "월", "화", "수", "목", "금", "토"] as const
 /** 캘린더 화면의 Locator와 사용자 행동을 담당하는 Page */
 export class CalendarPage {
   // 여러 테스트에서 반복 사용하는 고정 Locator
-  readonly calendarTab: Locator
-  readonly loadingIndicator: Locator
+  private readonly calendarTab: Locator
+  private readonly loadingIndicator: Locator
   readonly previousMonthButton: Locator
   readonly nextMonthButton: Locator
-  readonly collapseScheduleButton: Locator
-  readonly todayButton: Locator
+  private readonly collapseScheduleButton: Locator
+  private readonly todayButton: Locator
   readonly groupSelector: Locator
   readonly progress: Locator
   readonly personalScheduleSection: Locator
   readonly teamScheduleSection: Locator
-  readonly managePersonalScheduleButton: Locator
+  private readonly managePersonalScheduleButton: Locator
 
   private readonly page: Page
 
@@ -48,7 +48,7 @@ export class CalendarPage {
     await this.detailPanel.waitFor({ state: "visible" })
   }
 
-  get detailPanel(): Locator {
+  private get detailPanel(): Locator {
     // 상세 패널 상태에 따라 testID가 바뀌므로 공통 텍스트로 현재 요소를 찾아야 함
     return this.page.locator('[data-testid^="calendar-detail-panel-"]')
   }
@@ -58,7 +58,7 @@ export class CalendarPage {
     return this.page.getByTestId(`calendar-detail-panel-${stage}`)
   }
 
-  dateButton(date: Date): Locator {
+  private dateButton(date: Date): Locator {
     return this.page.getByRole("button", {
       name: this.fullDateLabel(date), // yyyy년 M월 d일
       exact: true,
@@ -123,6 +123,14 @@ export class CalendarPage {
     throw new Error(`${this.fullDateLabel(date)} 날짜가 현재 달력 화면에 표시되지 않았습니다.`)
   }
 
+  async selectToday(): Promise<void> {
+    await this.todayButton.click()
+  }
+
+  async collapseDetailPanel(): Promise<void> {
+    await this.collapseScheduleButton.click()
+  }
+
   async navigateToMonth(target: Date): Promise<void> {
     const targetMonthIndex = target.getFullYear() * 12 + target.getMonth()
 
@@ -164,15 +172,15 @@ export class CalendarPage {
     await this.managePersonalScheduleButton.click()
   }
 
-  fullDateLabel(date: Date): string {
+  private fullDateLabel(date: Date): string {
     return `${date.getFullYear()}년 ${date.getMonth() + 1}월 ${date.getDate()}일` // 2026년 1월 1일
   }
 
-  detailDateLabel(date: Date): string {
+  private detailDateLabel(date: Date): string {
     return `${this.fullDateLabel(date)} (${WEEKDAYS[date.getDay()]})`
   }
 
-  shortDateLabel(date: Date): string {
+  private shortDateLabel(date: Date): string {
     return `${date.getMonth() + 1}월 ${date.getDate()}일 (${WEEKDAYS[date.getDay()]})` // 1월 1일 (수)
   }
 

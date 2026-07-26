@@ -132,7 +132,7 @@ test.describe("캘린더 날짜 이동", () => {
     const otherDay = today.getDate() === 15 ? 16 : 15
 
     await calendarPage.selectDate(dateInCurrentMonth(otherDay))
-    await calendarPage.todayButton.click()
+    await calendarPage.selectToday()
 
     await expect(calendarPage.selectedDateButton(today)).toBeVisible()
   })
@@ -162,7 +162,7 @@ test.describe("상세 일정 패널", () => {
     await expect(calendarPage.detailPanelAt("expanded")).toBeVisible()
     await expect(calendarPage.nextMonthButton).toBeDisabled()
 
-    await calendarPage.collapseScheduleButton.click()
+    await calendarPage.collapseDetailPanel()
 
     await expect(calendarPage.detailPanelAt("half")).toBeVisible()
   })

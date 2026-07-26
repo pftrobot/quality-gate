@@ -6,16 +6,13 @@ import {
   uniqueTitle,
 } from "@/utils/personalScheduleTestUtils"
 
-test.beforeEach(async ({ calendarPage }) => {
+test.beforeEach(async ({ calendarPage, habitSettingsPage }) => {
   await calendarPage.goto()
+  await openPersonalSchedule(calendarPage, habitSettingsPage)
 })
 
 test.describe("내 일정 추가 설정", () => {
-  test("내 일정 추가 화면에는 입력 항목과 기본 설정이 표시된다", async ({
-    calendarPage,
-    habitSettingsPage,
-  }) => {
-    await openPersonalSchedule(calendarPage, habitSettingsPage)
+  test("내 일정 추가 화면에는 입력 항목과 기본 설정이 표시된다", async ({ habitSettingsPage }) => {
     await habitSettingsPage.startAdding()
 
     await expect(habitSettingsPage.addHeading).toBeVisible()
@@ -31,11 +28,7 @@ test.describe("내 일정 추가 설정", () => {
     )
   })
 
-  test("날짜 사용 스위치를 켜면 시작일과 마감일 입력이 표시된다", async ({
-    calendarPage,
-    habitSettingsPage,
-  }) => {
-    await openPersonalSchedule(calendarPage, habitSettingsPage)
+  test("날짜 사용 스위치를 켜면 시작일과 마감일 입력이 표시된다", async ({ habitSettingsPage }) => {
     await habitSettingsPage.startAdding()
 
     await expect(habitSettingsPage.dateInput("시작일")).toBeHidden()
@@ -49,11 +42,7 @@ test.describe("내 일정 추가 설정", () => {
     await expect(habitSettingsPage.dateInput("마감일")).toBeVisible()
   })
 
-  test("반복을 매주로 변경하면 반복 요일을 선택할 수 있다", async ({
-    calendarPage,
-    habitSettingsPage,
-  }) => {
-    await openPersonalSchedule(calendarPage, habitSettingsPage)
+  test("반복을 매주로 변경하면 반복 요일을 선택할 수 있다", async ({ habitSettingsPage }) => {
     await habitSettingsPage.startAdding()
 
     await habitSettingsPage.recurrenceOption("매주").click()
@@ -67,11 +56,9 @@ test.describe("내 일정 추가 설정", () => {
 })
 
 test("이모지를 검색해 선택하면 선택 결과가 반영되고 선택기가 닫힌다", async ({
-  calendarPage,
   habitSettingsPage,
   page,
 }) => {
-  await openPersonalSchedule(calendarPage, habitSettingsPage)
   await habitSettingsPage.startAdding()
 
   await habitSettingsPage.emojiButton.click()
@@ -98,8 +85,6 @@ test("제목을 입력하지 않고 저장하면 기본 제목 '할 일'로 일�
   let createdTaskTestId: string | undefined
 
   try {
-    await openPersonalSchedule(calendarPage, habitSettingsPage)
-
     const hasSchedulesBefore = (await habitSettingsPage.scheduleRows().count()) > 0
     const lastTaskTestIdBefore = hasSchedulesBefore
       ? await habitSettingsPage.lastScheduleRowTestId()
@@ -154,7 +139,6 @@ test.describe("내 일정 수정/삭제", () => {
     const updatedTitle = `${originalTitle}-updated`
 
     try {
-      await openPersonalSchedule(calendarPage, habitSettingsPage)
       await habitSettingsPage.createSchedule(originalTitle)
       await habitSettingsPage.openSchedule(originalTitle)
       await expect(habitSettingsPage.editHeading).toBeVisible()
@@ -177,7 +161,6 @@ test.describe("내 일정 수정/삭제", () => {
     const title = uniqueTitle("e2e-delete", testInfo)
 
     try {
-      await openPersonalSchedule(calendarPage, habitSettingsPage)
       await habitSettingsPage.createSchedule(title)
       await habitSettingsPage.openSchedule(title)
       await expect(habitSettingsPage.editHeading).toBeVisible()
