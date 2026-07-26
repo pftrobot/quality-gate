@@ -1,5 +1,5 @@
 import { expect } from "@playwright/test"
-import { test } from "../fixtures/pages.fixture"
+import { test } from "@/fixtures/pages.fixture"
 
 const LOGIN_EMAIL = process.env.TOIT_LOGIN_ID
 const LOGIN_PASSWORD = process.env.TOIT_LOGIN_PASSWORD

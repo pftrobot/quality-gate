@@ -1,7 +1,7 @@
 import { test as base } from "@playwright/test"
-import { CalendarPage } from "../pages/CalendarPage"
-import { HabitSettingsPage } from "../pages/HabitSettingsPage"
-import { LoginPage } from "../pages/LoginPage"
+import { CalendarPage } from "@/pages/CalendarPage"
+import { HabitSettingsPage } from "@/pages/HabitSettingsPage"
+import { LoginPage } from "@/pages/LoginPage"
 
 type MyFixtures = {
   calendarPage: CalendarPage

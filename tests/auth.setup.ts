@@ -1,6 +1,6 @@
 import * as path from "node:path"
 import { expect } from "@playwright/test"
-import { test } from "../fixtures/pages.fixture"
+import { test } from "@/fixtures/pages.fixture"
 
 const authFile = path.resolve(__dirname, "../playwright/.auth/user.json")
 
