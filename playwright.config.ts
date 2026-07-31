@@ -44,7 +44,7 @@ export default defineConfig({
     {
       name: "authenticated-chromium",
       use: { ...devices["Desktop Chrome"], storageState: "playwright/.auth/user.json" },
-      testMatch: /(calendar|habit-settings)\.spec\.ts/,
+      testMatch: /(calendar|habit-settings|groups|group-tasks)\.spec\.ts/,
       dependencies: ["setup"],
     },
 
