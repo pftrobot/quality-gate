@@ -4,6 +4,7 @@ import { GroupPage } from "@/pages/GroupPage"
 import { GroupTaskPage } from "@/pages/GroupTaskPage"
 import { HabitSettingsPage } from "@/pages/HabitSettingsPage"
 import { LoginPage } from "@/pages/LoginPage"
+import { MorePage } from "@/pages/MorePage"
 
 type MyFixtures = {
   calendarPage: CalendarPage
@@ -11,6 +12,7 @@ type MyFixtures = {
   groupTaskPage: GroupTaskPage
   habitSettingsPage: HabitSettingsPage
   loginPage: LoginPage
+  morePage: MorePage
 }
 
 export const test = base.extend<MyFixtures>({
@@ -30,5 +32,8 @@ export const test = base.extend<MyFixtures>({
     const loginPage = new LoginPage(page)
 
     await use(loginPage)
+  },
+  morePage: async ({ page }, use) => {
+    await use(new MorePage(page))
   },
 })
