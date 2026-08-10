@@ -3,7 +3,13 @@
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
-  "scripts": {},
+  "scripts": {
+    "check": "pnpm format:check && pnpm lint && pnpm typecheck",
+    "format:check": "prettier --check README.md package.json tsconfig.json playwright.config.ts eslint.config.mjs \".github/**/*.yml\" \"fixtures/**/*.ts\" \"pages/**/*.ts\" \"tests/**/*.ts\" \"utils/**/*.ts\"",
+    "lint": "eslint fixtures pages tests utils playwright.config.ts",
+    "test:e2e": "playwright test",
+    "typecheck": "tsc --noEmit"
+  },
   "keywords": [],
   "author": "",
   "license": "ISC",
@@ -15,6 +21,7 @@
     "eslint": "^10.7.0",
     "eslint-config-prettier": "^10.1.8",
     "prettier": "3.9.5",
+    "typescript": "6.0.3",
     "typescript-eslint": "^8.64.0"
   }
 }
