@@ -38,7 +38,7 @@ export default defineConfig({
     {
       name: "chromium",
       use: { ...devices["Desktop Chrome"] },
-      testMatch: /auth\.spec\.ts/,
+      testMatch: /(auth|signup)\.spec\.ts/,
     },
 
     {
@@ -51,13 +51,13 @@ export default defineConfig({
     {
       name: "firefox",
       use: { ...devices["Desktop Firefox"] },
-      testMatch: /auth\.spec\.ts/,
+      testMatch: /(auth|signup)\.spec\.ts/,
     },
 
     {
       name: "webkit",
       use: { ...devices["Desktop Safari"] },
-      testMatch: /auth\.spec\.ts/,
+      testMatch: /(auth|signup)\.spec\.ts/,
     },
 
     {
