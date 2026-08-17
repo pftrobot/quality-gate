@@ -1,12 +1,6 @@
 import { expect } from "@playwright/test"
-import { test } from "@/fixtures/pages.fixture"
-import {
-  deletePersonalScheduleByTestIdIfPresent,
-  deletePersonalScheduleIfPresent,
-  deletePersonalSchedulesIfPresent,
-  openPersonalSchedule,
-  uniqueTitle,
-} from "@/utils/personalScheduleTestUtils"
+import { test } from "@/fixtures/personalSchedule.fixture"
+import { openPersonalSchedule, uniqueTitle } from "@/utils/personalScheduleTestUtils"
 
 test.beforeEach(async ({ calendarPage, habitSettingsPage }) => {
   await calendarPage.goto()
@@ -81,100 +75,79 @@ test("이모지를 검색해 선택하면 선택 결과가 반영되고 선택�
 })
 
 test("제목을 입력하지 않고 저장하면 기본 제목 '할 일'로 일정이 생성된다", async ({
-  calendarPage,
   habitSettingsPage,
+  personalScheduleCleanup,
 }) => {
-  let createdTaskTestId: string | undefined
-  let lastTaskTestIdBefore: string | null = null
-  let scheduleSaved = false
+  const hasSchedulesBefore = (await habitSettingsPage.scheduleRows().count()) > 0
+  const lastTaskTestIdBefore = hasSchedulesBefore
+    ? await habitSettingsPage.lastScheduleRowTestId()
+    : null
+  const cleanupHandle = personalScheduleCleanup.registerByTestId({
+    previousLastTestId: lastTaskTestIdBefore,
+    title: "할 일",
+  })
 
-  try {
-    const hasSchedulesBefore = (await habitSettingsPage.scheduleRows().count()) > 0
-    lastTaskTestIdBefore = hasSchedulesBefore
-      ? await habitSettingsPage.lastScheduleRowTestId()
-      : null
+  // 일정 생성
+  await habitSettingsPage.createSchedule()
+  await expect(habitSettingsPage.listHeading).toBeVisible()
 
-    // 일정 생성
-    await habitSettingsPage.createSchedule()
-    scheduleSaved = true
-    await expect(habitSettingsPage.listHeading).toBeVisible()
+  let candidateTestId: string | null = null
+  await expect
+    .poll(async () => {
+      try {
+        candidateTestId = await habitSettingsPage.lastScheduleRowTestId()
+      } catch {
+        candidateTestId = null
+      }
+      return candidateTestId
+    })
+    .not.toBe(lastTaskTestIdBefore)
 
-    let candidateTestId: string | null = null
-    await expect
-      .poll(async () => {
-        try {
-          candidateTestId = await habitSettingsPage.lastScheduleRowTestId()
-        } catch {
-          candidateTestId = null
-        }
-        return candidateTestId
-      })
-      .not.toBe(lastTaskTestIdBefore)
-
-    if (candidateTestId === null) {
-      throw new Error("새로 생성된 일정의 test ID를 확인할 수 없습니다.")
-    }
-    createdTaskTestId = candidateTestId
-
-    // 생성된 일정 내용 확인
-    await habitSettingsPage.scheduleEditButton(createdTaskTestId, "할 일").click()
-    await expect(habitSettingsPage.editHeading).toBeVisible()
-    await expect(habitSettingsPage.titleInput).toHaveValue("할 일")
-  } finally {
-    // 기본값 검증과 무관한 삭제는 cleanup으로만 수행
-    if (scheduleSaved) {
-      await deletePersonalScheduleByTestIdIfPresent(calendarPage, habitSettingsPage, {
-        testId: createdTaskTestId,
-        previousLastTestId: lastTaskTestIdBefore,
-        title: "할 일",
-      })
-    }
+  if (candidateTestId === null) {
+    throw new Error("새로 생성된 일정의 test ID를 확인할 수 없습니다.")
   }
+  cleanupHandle.setTestId(candidateTestId)
+
+  // 생성된 일정 내용 확인
+  await habitSettingsPage.scheduleEditButton(candidateTestId, "할 일").click()
+  await expect(habitSettingsPage.editHeading).toBeVisible()
+  await expect(habitSettingsPage.titleInput).toHaveValue("할 일")
 })
 
 test.describe("내 일정 수정/삭제", () => {
   test("내 일정 제목을 수정하면 변경된 제목이 목록에 반영된다", async ({
-    calendarPage,
     habitSettingsPage,
+    personalScheduleCleanup,
   }, testInfo) => {
     const originalTitle = uniqueTitle("e2e-edit", testInfo)
     const updatedTitle = `${originalTitle}-updated`
+    personalScheduleCleanup.registerTitle(originalTitle)
+    personalScheduleCleanup.registerTitle(updatedTitle)
 
-    try {
-      await habitSettingsPage.createSchedule(originalTitle)
-      await habitSettingsPage.openSchedule(originalTitle)
-      await expect(habitSettingsPage.editHeading).toBeVisible()
+    await habitSettingsPage.createSchedule(originalTitle)
+    await habitSettingsPage.openSchedule(originalTitle)
+    await expect(habitSettingsPage.editHeading).toBeVisible()
 
-      await habitSettingsPage.updateTitle(updatedTitle)
+    await habitSettingsPage.updateTitle(updatedTitle)
 
-      await expect(habitSettingsPage.scheduleItem(originalTitle)).toHaveCount(0)
-      await expect(habitSettingsPage.scheduleItem(updatedTitle)).toBeVisible()
-    } finally {
-      // 수정 도중 실패해도 원본과 수정된 제목을 모두 확인해 잔여 데이터를 삭제
-      await deletePersonalSchedulesIfPresent(calendarPage, habitSettingsPage, [
-        updatedTitle,
-        originalTitle,
-      ])
-    }
+    await expect(habitSettingsPage.scheduleItem(originalTitle)).toHaveCount(0)
+    await expect(habitSettingsPage.scheduleItem(updatedTitle)).toBeVisible()
   })
 
   test("내 일정을 삭제하면 목록에서 제거된다", async ({
-    calendarPage,
     habitSettingsPage,
+    personalScheduleCleanup,
   }, testInfo) => {
     const title = uniqueTitle("e2e-delete", testInfo)
+    personalScheduleCleanup.registerTitle(title)
 
-    try {
-      await habitSettingsPage.createSchedule(title)
-      await habitSettingsPage.openSchedule(title)
-      await expect(habitSettingsPage.editHeading).toBeVisible()
+    await habitSettingsPage.createSchedule(title)
+    await habitSettingsPage.openSchedule(title)
+    await expect(habitSettingsPage.editHeading).toBeVisible()
 
-      const dialogMessage = await habitSettingsPage.deleteOpenSchedule()
+    const dialogMessage = await habitSettingsPage.deleteOpenSchedule()
 
-      expect(dialogMessage).toContain(title)
-      await expect(habitSettingsPage.scheduleItem(title)).toHaveCount(0)
-    } finally {
-      await deletePersonalScheduleIfPresent(calendarPage, habitSettingsPage, title)
-    }
+    expect(dialogMessage).toContain(title)
+    await expect(habitSettingsPage.scheduleItem(title)).toHaveCount(0)
   })
 })

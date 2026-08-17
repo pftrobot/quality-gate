@@ -73,16 +73,21 @@ export async function deletePersonalScheduleByTestIdIfPresent(
   if (cleanupTestId === undefined) {
     let candidateTestId: string | null = null
 
-    await expect
-      .poll(async () => {
-        try {
-          candidateTestId = await habitSettingsPage.lastScheduleRowTestId()
-        } catch {
-          candidateTestId = null
-        }
-        return candidateTestId
-      })
-      .not.toBe(previousLastTestId)
+    try {
+      await expect
+        .poll(async () => {
+          try {
+            candidateTestId = await habitSettingsPage.lastScheduleRowTestId()
+          } catch {
+            candidateTestId = null
+          }
+          return candidateTestId
+        })
+        .not.toBe(previousLastTestId)
+    } catch {
+      // 생성 전에 실패했다면 정리할 새 일정이 없으므로 teardown을 실패시키지 않는다.
+      return
+    }
 
     cleanupTestId = candidateTestId ?? undefined
   }

@@ -1,9 +1,8 @@
 import { expect } from "@playwright/test"
-import { test } from "@/fixtures/pages.fixture"
+import { test } from "@/fixtures/personalSchedule.fixture"
 import type { ScheduleRecurrence } from "@/pages/HabitSettingsPage"
 import {
   dateInCurrentMonth,
-  deletePersonalScheduleIfPresent,
   openPersonalSchedule,
   uniqueTitle,
 } from "@/utils/personalScheduleTestUtils"
@@ -206,27 +205,24 @@ test.describe("일정 완료 상태", () => {
   test("내 일정은 완료와 완료 취소를 할 수 있다", async ({
     calendarPage,
     habitSettingsPage,
+    personalScheduleCleanup,
   }, testInfo) => {
     const title = uniqueTitle("e2e-completion", testInfo)
+    personalScheduleCleanup.registerTitle(title)
 
-    // Assertion이 실패해도 생성한 테스트 데이터가 남지 않도록 finally에서 삭제
-    try {
-      await openPersonalSchedule(calendarPage, habitSettingsPage)
-      await habitSettingsPage.createSchedule(title)
-      await expect(habitSettingsPage.scheduleItem(title)).toBeVisible()
+    await openPersonalSchedule(calendarPage, habitSettingsPage)
+    await habitSettingsPage.createSchedule(title)
+    await expect(habitSettingsPage.scheduleItem(title)).toBeVisible()
 
-      await habitSettingsPage.backButton.click()
-      await calendarPage.selectDate(new Date())
-      const checkbox = calendarPage.scheduleCheckbox(title)
+    await habitSettingsPage.backButton.click()
+    await calendarPage.selectDate(new Date())
+    const checkbox = calendarPage.scheduleCheckbox(title)
 
-      await expect(checkbox).not.toBeChecked()
-      await checkbox.click()
-      await expect(checkbox).toBeChecked()
-      await checkbox.click()
-      await expect(checkbox).not.toBeChecked()
-    } finally {
-      await deletePersonalScheduleIfPresent(calendarPage, habitSettingsPage, title)
-    }
+    await expect(checkbox).not.toBeChecked()
+    await checkbox.click()
+    await expect(checkbox).toBeChecked()
+    await checkbox.click()
+    await expect(checkbox).not.toBeChecked()
   })
 
   test("팀 일정은 완료와 완료 취소를 할 수 있다", async ({ calendarPage }) => {
@@ -268,10 +264,12 @@ test("상세 패널의 톱니 버튼을 누르면 내 일정 목록으로 이동
 
 test.describe("반복 설정의 캘린더 반영", () => {
   for (const recurrenceCase of recurrenceCalendarCases) {
-    test(recurrenceCase.testName, async ({ calendarPage, habitSettingsPage }, testInfo) => {
-      const title = uniqueTitle(recurrenceCase.titlePrefix, testInfo)
+    test(
+      recurrenceCase.testName,
+      async ({ calendarPage, habitSettingsPage, personalScheduleCleanup }, testInfo) => {
+        const title = uniqueTitle(recurrenceCase.titlePrefix, testInfo)
+        personalScheduleCleanup.registerTitle(title)
 
-      try {
         await openPersonalSchedule(calendarPage, habitSettingsPage)
         await habitSettingsPage.createRecurringSchedule({
           title,
@@ -294,9 +292,7 @@ test.describe("반복 설정의 캘린더 반영", () => {
           await calendarPage.selectDate(date)
           await expect(calendarPage.scheduleCheckbox(title)).toHaveCount(0)
         }
-      } finally {
-        await deletePersonalScheduleIfPresent(calendarPage, habitSettingsPage, title)
-      }
-    })
+      },
+    )
   }
 })
