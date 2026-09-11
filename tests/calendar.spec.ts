@@ -190,7 +190,11 @@ test("그룹 선택 목록에서 다른 그룹과 전체를 선택할 수 있다
 
   await expect(dialog).toBeVisible()
   // 테스트 계정에 그룹이 없으면 데이터 부족으로 이 테스트만 건너뛰기
-  test.skip((await options.count()) < 2, "테스트 계정에 선택 가능한 그룹이 필요합니다.")
+  const optionCount = await options.count()
+  test.skip(
+    optionCount < 2,
+    `그룹 선택 목록에 옵션이 ${optionCount}개뿐입니다("전체" 포함). "전체" 외에 최소 1개 그룹이 필요하니, 테스트 계정으로 Groups 탭에서 그룹을 하나 이상 생성해주세요.`,
+  )
 
   const otherGroupName = (await options.nth(1).innerText()).trim()
   await options.nth(1).click()
@@ -229,9 +233,14 @@ test.describe("일정 완료 상태", () => {
     calendarPage,
     scheduleCompletionCleanup,
   }) => {
+    const missingEnvVars = [
+      !TEAM_TASK_TITLE && "TOIT_TEAM_TASK_TITLE",
+      !TEAM_TASK_DATE && "TOIT_TEAM_TASK_DATE",
+    ].filter(Boolean)
+
     test.skip(
-      !TEAM_TASK_TITLE || !TEAM_TASK_DATE,
-      "TOIT_TEAM_TASK_TITLE과 TOIT_TEAM_TASK_DATE 테스트 데이터가 필요합니다.",
+      missingEnvVars.length > 0,
+      `환경변수 ${missingEnvVars.join(", ")}가 설정되어 있지 않습니다. 테스트 계정에 실제로 존재하는 팀 일정의 제목(TOIT_TEAM_TASK_TITLE)과 날짜(TOIT_TEAM_TASK_DATE, YYYY-MM-DD)로 설정해주세요.`,
     )
 
     const targetDate = new Date(`${TEAM_TASK_DATE}T00:00:00`)
@@ -239,6 +248,18 @@ test.describe("일정 완료 상태", () => {
     await calendarPage.selectDate(targetDate)
 
     const checkbox = calendarPage.scheduleCheckbox(TEAM_TASK_TITLE!)
+
+    // 팀 일정이 실제 계정에 없으면(삭제/이동 등) 30초 타임아웃으로 실패하는 대신 원인을 알 수 있게 스킵한다.
+    const exists = await checkbox
+      .waitFor({ state: "visible", timeout: 5_000 })
+      .then(() => true)
+      .catch(() => false)
+
+    test.skip(
+      !exists,
+      `환경변수 TOIT_TEAM_TASK_TITLE="${TEAM_TASK_TITLE}", TOIT_TEAM_TASK_DATE="${TEAM_TASK_DATE}"에 해당하는 팀 일정을 계정에서 찾을 수 없습니다. 테스트 계정에 실제로 존재하는(완료 취소 가능한) 팀 일정의 제목/날짜로 두 환경변수를 갱신해주세요.`,
+    )
+
     // 기존 상태 기억 (테스트가 끝날 때 테스트 전과 같은 상태인지 확인하기 위함)
     const initiallyChecked = await checkbox.isChecked()
     scheduleCompletionCleanup.register({
