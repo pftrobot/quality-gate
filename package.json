@@ -8,7 +8,8 @@
     "format:check": "prettier --check README.md package.json tsconfig.json playwright.config.ts eslint.config.mjs \".github/**/*.yml\" \"fixtures/**/*.ts\" \"pages/**/*.ts\" \"tests/**/*.ts\" \"utils/**/*.ts\"",
     "lint": "eslint fixtures pages tests utils playwright.config.ts",
     "test:e2e": "playwright test",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "postinstall": "playwright install --with-deps"
   },
   "keywords": [],
   "author": "",
