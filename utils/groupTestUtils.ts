@@ -10,9 +10,10 @@ export async function deleteGroupsIfPresent(
   groupPage: GroupPage,
   names: readonly string[],
 ): Promise<void> {
-  await groupPage.goto()
-
   for (const name of new Set(names)) {
+    // 이전 항목 삭제 후 유지된 가상 목록 스크롤 위치에 영향을 받지 않도록 매번 목록을 초기화한다.
+    await groupPage.goto()
+
     if (!(await groupPage.revealGroupInList(name))) continue
 
     await groupPage.openGroup(name)

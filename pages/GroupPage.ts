@@ -1,4 +1,5 @@
 import { expect, type Locator, type Page } from "@playwright/test"
+import { scrollVirtualizedListUntilRendered } from "@/utils/virtualizedListUtils"
 
 export type GroupInput = {
   name: string
@@ -260,25 +261,20 @@ export class GroupPage {
     const item = this.groupOpenButton(name)
     if ((await item.count()) > 0) return true
 
-    // 가상화 목록을 무한히 찾지 않게 하기 위해 스크롤 횟수를 20번으로 제한
-    for (let attempt = 0; attempt < 20; attempt += 1) {
-      const visibleRows = this.page.getByTestId(/^project-item-/).filter({ visible: true })
-      if ((await visibleRows.count()) === 0) return false
+    const visibleRows = this.page.getByTestId(/^project-item-/).filter({ visible: true })
 
-      const lastRow = visibleRows.last()
-      const lastTestIdBefore = await lastRow.getAttribute("data-testid")
-      await lastRow.scrollIntoViewIfNeeded()
-      await lastRow.hover()
-
-      if ((await item.count()) > 0) return true
-
-      const lastTestIdAfter = await visibleRows.last().getAttribute("data-testid")
-
-      // 마지막 항목의 ID가 변하지 않으면 목록의 끝으로 간주
-      if (lastTestIdAfter === lastTestIdBefore) return false
+    try {
+      // 목록 heading이 먼저 표시되고 Firestore 항목은 뒤늦게 렌더링될 수 있다.
+      await expect
+        .poll(async () => (await item.count()) > 0 || (await visibleRows.count()) > 0, {
+          timeout: 5_000,
+        })
+        .toBe(true)
+    } catch {
+      return false
     }
 
-    return false
+    return scrollVirtualizedListUntilRendered(item, visibleRows)
   }
 
   private async fillGroupForm(input: GroupInput): Promise<void> {

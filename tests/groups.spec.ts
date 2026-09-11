@@ -1,11 +1,7 @@
 import { expect } from "@playwright/test"
-import { test } from "@/fixtures/pages.fixture"
+import { test } from "@/fixtures/group.fixture"
 import { dismissDialogAndGetMessage } from "@/utils/dialogUtils"
-import {
-  deleteGroupIfPresent,
-  deleteGroupsIfPresent,
-  uniqueGroupName,
-} from "@/utils/groupTestUtils"
+import { uniqueGroupName } from "@/utils/groupTestUtils"
 
 test.beforeEach(async ({ groupPage }) => {
   await groupPage.goto()
@@ -109,143 +105,133 @@ test.describe("그룹 추가 설정", () => {
 
 test.describe("그룹 생성과 상세", () => {
   test("그룹을 생성하면 목록과 상세 화면에 저장한 정보가 표시된다", async ({
+    groupCleanup,
     groupPage,
   }, testInfo) => {
     const name = uniqueGroupName("e2e-create-group", testInfo)
     const memo = "그룹 생성 테스트 메모"
+    groupCleanup.registerName(name)
 
-    try {
-      await groupPage.createGroup({
-        name,
-        memo,
-        colorIndex: 2,
-        showDeadline: true,
-        deadline: new Date(2026, 11, 31),
-        showProgress: true,
-        showIncompleteCount: true,
-      })
+    await groupPage.createGroup({
+      name,
+      memo,
+      colorIndex: 2,
+      showDeadline: true,
+      deadline: new Date(2026, 11, 31),
+      showProgress: true,
+      showIncompleteCount: true,
+    })
 
-      await expect(groupPage.groupOpenButton(name)).toBeVisible()
-      await expect(groupPage.groupRow(name)).toContainText(memo)
-      await expect(groupPage.groupRow(name)).toContainText(/마감일 2026\. 12\. 31\./)
-      await expect(groupPage.groupRow(name)).toContainText("진행률 0% (0/0)")
-      await expect(groupPage.groupRow(name)).toContainText("미완료 0개")
-      await expect(groupPage.groupRow(name)).toContainText("구성원 1명")
+    await expect(groupPage.groupOpenButton(name)).toBeVisible()
+    await expect(groupPage.groupRow(name)).toContainText(memo)
+    await expect(groupPage.groupRow(name)).toContainText(/마감일 2026\. 12\. 31\./)
+    await expect(groupPage.groupRow(name)).toContainText("진행률 0% (0/0)")
+    await expect(groupPage.groupRow(name)).toContainText("미완료 0개")
+    await expect(groupPage.groupRow(name)).toContainText("구성원 1명")
 
-      await groupPage.openGroup(name)
+    await groupPage.openGroup(name)
 
-      await expect(groupPage.detailHeading(name)).toBeVisible()
-      await expect(groupPage.statsMonthPicker).toHaveAttribute("aria-expanded", "false")
-      await expect(groupPage.taskListEmpty).toContainText("아직 작업이 없습니다")
-      await expect(groupPage.addTaskButton).toBeEnabled()
-    } finally {
-      await deleteGroupIfPresent(groupPage, name)
-    }
+    await expect(groupPage.detailHeading(name)).toBeVisible()
+    await expect(groupPage.statsMonthPicker).toHaveAttribute("aria-expanded", "false")
+    await expect(groupPage.taskListEmpty).toContainText("아직 작업이 없습니다")
+    await expect(groupPage.addTaskButton).toBeEnabled()
   })
 
   test("통계 월 선택 창에서 다른 월을 선택하면 상세 화면에 반영된다", async ({
+    groupCleanup,
     groupPage,
   }, testInfo) => {
     const name = uniqueGroupName("e2e-stats-month", testInfo)
     const now = new Date()
     const targetMonth = now.getMonth() === 0 ? 2 : 1
+    groupCleanup.registerName(name)
 
-    try {
-      await groupPage.createGroup({ name })
-      await groupPage.openGroup(name)
-      await groupPage.statsMonthPicker.click()
+    await groupPage.createGroup({ name })
+    await groupPage.openGroup(name)
+    await groupPage.statsMonthPicker.click()
 
-      await expect(groupPage.statsMonthDialog()).toBeVisible()
-      await expect(groupPage.statsMonthOption(now.getMonth() + 1)).toHaveAttribute(
-        "aria-selected",
-        "true",
-      )
+    await expect(groupPage.statsMonthDialog()).toBeVisible()
+    await expect(groupPage.statsMonthOption(now.getMonth() + 1)).toHaveAttribute(
+      "aria-selected",
+      "true",
+    )
 
-      await groupPage.statsMonthOption(targetMonth).click()
+    await groupPage.statsMonthOption(targetMonth).click()
 
-      await expect(groupPage.statsMonthDialog()).toBeHidden()
-      await expect(groupPage.statsMonthPicker).toContainText(`${targetMonth}월`)
-    } finally {
-      await deleteGroupIfPresent(groupPage, name)
-    }
+    await expect(groupPage.statsMonthDialog()).toBeHidden()
+    await expect(groupPage.statsMonthPicker).toContainText(`${targetMonth}월`)
   })
 })
 
 test.describe("그룹 설정", () => {
   test("그룹 설정을 수정하면 상세와 목록에 변경 내용이 반영된다", async ({
+    groupCleanup,
     groupPage,
   }, testInfo) => {
     const originalName = uniqueGroupName("e2e-edit-group", testInfo)
     const updatedName = `${originalName}-updated`
     const updatedMemo = "수정된 그룹 메모"
+    groupCleanup.registerName(originalName)
+    groupCleanup.registerName(updatedName)
 
-    try {
-      await groupPage.createGroup({ name: originalName })
-      await groupPage.openGroup(originalName)
-      await groupPage.openSettings()
+    await groupPage.createGroup({ name: originalName })
+    await groupPage.openGroup(originalName)
+    await groupPage.openSettings()
 
-      await expect(groupPage.settingsHeading).toBeVisible()
-      await expect(groupPage.groupNameInput).toHaveValue(originalName)
-      await expect(groupPage.membersList.getByRole("listitem")).toHaveCount(1)
-      await expect(groupPage.membersList).toContainText("생성자")
+    await expect(groupPage.settingsHeading).toBeVisible()
+    await expect(groupPage.groupNameInput).toHaveValue(originalName)
+    await expect(groupPage.membersList.getByRole("listitem")).toHaveCount(1)
+    await expect(groupPage.membersList).toContainText("생성자")
 
-      const message = await groupPage.updateGroup({
-        name: updatedName,
-        memo: updatedMemo,
-        colorIndex: 4,
-        showProgress: true,
-        showIncompleteCount: true,
-      })
+    const message = await groupPage.updateGroup({
+      name: updatedName,
+      memo: updatedMemo,
+      colorIndex: 4,
+      showProgress: true,
+      showIncompleteCount: true,
+    })
 
-      expect(message).toContain("그룹 설정이 저장되었습니다.")
-      await groupPage.backToDetailButton.click()
-      await expect(groupPage.detailHeading(updatedName)).toBeVisible()
-      await groupPage.backToListButton.click()
-      await expect(groupPage.groupOpenButton(updatedName)).toBeVisible()
-      await expect(groupPage.groupRow(updatedName)).toContainText(updatedMemo)
-      await expect(groupPage.groupOpenButton(originalName)).toHaveCount(0)
-    } finally {
-      await deleteGroupsIfPresent(groupPage, [updatedName, originalName])
-    }
+    expect(message).toContain("그룹 설정이 저장되었습니다.")
+    await groupPage.backToDetailButton.click()
+    await expect(groupPage.detailHeading(updatedName)).toBeVisible()
+    await groupPage.backToListButton.click()
+    await expect(groupPage.groupOpenButton(updatedName)).toBeVisible()
+    await expect(groupPage.groupRow(updatedName)).toContainText(updatedMemo)
+    await expect(groupPage.groupOpenButton(originalName)).toHaveCount(0)
   })
 
-  test("초대 코드를 생성하면 코드가 표시된다", async ({ groupPage }, testInfo) => {
+  test("초대 코드를 생성하면 코드가 표시된다", async ({ groupCleanup, groupPage }, testInfo) => {
     test.fixme(true, "서비스의 초대 코드 생성 오류가 해결된 후 다시 활성화합니다.")
 
     const name = uniqueGroupName("e2e-invite-code", testInfo)
+    groupCleanup.registerName(name)
 
-    try {
-      await groupPage.createGroup({ name })
-      await groupPage.openGroup(name)
-      await groupPage.openSettings()
+    await groupPage.createGroup({ name })
+    await groupPage.openGroup(name)
+    await groupPage.openSettings()
 
-      // 설정 화면 진입 시 활성 초대 코드를 먼저 조회하거나 생성함
-      await expect(groupPage.settingsScreen).toContainText(/코드: [A-Z0-9]+/)
-      const message = await groupPage.createInviteCode()
+    // 설정 화면 진입 시 활성 초대 코드를 먼저 조회하거나 생성함
+    await expect(groupPage.settingsScreen).toContainText(/코드: [A-Z0-9]+/)
+    const message = await groupPage.createInviteCode()
 
-      expect(message).toMatch(/현재 초대 코드: [A-Z0-9]+/)
-      await expect(groupPage.settingsScreen).toContainText(/코드: [A-Z0-9]+/)
-    } finally {
-      await deleteGroupIfPresent(groupPage, name)
-    }
+    expect(message).toMatch(/현재 초대 코드: [A-Z0-9]+/)
+    await expect(groupPage.settingsScreen).toContainText(/코드: [A-Z0-9]+/)
   })
 
   test("프로젝트 삭제를 확인하면 그룹과 그룹 데이터가 목록에서 제거된다", async ({
+    groupCleanup,
     groupPage,
   }, testInfo) => {
     const name = uniqueGroupName("e2e-delete-group", testInfo)
+    groupCleanup.registerName(name)
 
-    try {
-      await groupPage.createGroup({ name })
-      await groupPage.openGroup(name)
-      await groupPage.openSettings()
+    await groupPage.createGroup({ name })
+    await groupPage.openGroup(name)
+    await groupPage.openSettings()
 
-      const message = await groupPage.deleteOpenGroup()
+    const message = await groupPage.deleteOpenGroup()
 
-      expect(message).toContain("모든 작업이 함께 삭제됩니다.")
-      await expect(groupPage.groupOpenButton(name)).toHaveCount(0)
-    } finally {
-      await deleteGroupIfPresent(groupPage, name)
-    }
+    expect(message).toContain("모든 작업이 함께 삭제됩니다.")
+    await expect(groupPage.groupOpenButton(name)).toHaveCount(0)
   })
 })

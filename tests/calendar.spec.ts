@@ -225,7 +225,10 @@ test.describe("일정 완료 상태", () => {
     await expect(checkbox).not.toBeChecked()
   })
 
-  test("팀 일정은 완료와 완료 취소를 할 수 있다", async ({ calendarPage }) => {
+  test("팀 일정은 완료와 완료 취소를 할 수 있다", async ({
+    calendarPage,
+    scheduleCompletionCleanup,
+  }) => {
     test.skip(
       !TEAM_TASK_TITLE || !TEAM_TASK_DATE,
       "TOIT_TEAM_TASK_TITLE과 TOIT_TEAM_TASK_DATE 테스트 데이터가 필요합니다.",
@@ -238,16 +241,14 @@ test.describe("일정 완료 상태", () => {
     const checkbox = calendarPage.scheduleCheckbox(TEAM_TASK_TITLE!)
     // 기존 상태 기억 (테스트가 끝날 때 테스트 전과 같은 상태인지 확인하기 위함)
     const initiallyChecked = await checkbox.isChecked()
+    scheduleCompletionCleanup.register({
+      title: TEAM_TASK_TITLE!,
+      date: targetDate,
+      initiallyChecked,
+    })
 
-    try {
-      await checkbox.click()
-      await expect(checkbox).toBeChecked({ checked: !initiallyChecked })
-    } finally {
-      if ((await checkbox.isChecked()) !== initiallyChecked) {
-        await checkbox.click()
-      }
-      await expect(checkbox).toBeChecked({ checked: initiallyChecked })
-    }
+    await checkbox.click()
+    await expect(checkbox).toBeChecked({ checked: !initiallyChecked })
   })
 })
 

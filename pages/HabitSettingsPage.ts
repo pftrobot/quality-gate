@@ -1,4 +1,5 @@
-import type { Locator, Page } from "@playwright/test"
+import { expect, type Locator, type Page } from "@playwright/test"
+import { scrollVirtualizedListUntilRendered } from "@/utils/virtualizedListUtils"
 
 export type Weekday = "일" | "월" | "화" | "수" | "목" | "금" | "토"
 
@@ -75,10 +76,20 @@ export class HabitSettingsPage {
       await lastRow.scrollIntoViewIfNeeded()
       await lastRow.hover()
 
-      const testIdAfterScroll = await rows.last().getAttribute("data-testid")
+      let testIdAfterScroll = testIdBeforeScroll
 
-      if (testIdAfterScroll && testIdAfterScroll === testIdBeforeScroll) {
-        return testIdAfterScroll
+      try {
+        await expect
+          .poll(
+            async () => {
+              testIdAfterScroll = await rows.last().getAttribute("data-testid")
+              return testIdAfterScroll
+            },
+            { timeout: 1_500, intervals: [50, 100, 250] },
+          )
+          .not.toBe(testIdBeforeScroll)
+      } catch {
+        if (testIdAfterScroll) return testIdAfterScroll
       }
     }
 
@@ -166,10 +177,27 @@ export class HabitSettingsPage {
 
     if ((await item.count()) > 0) return true
 
+    const visibleRows = this.scheduleRows().filter({ visible: true })
+    const endedSchedulesButton = this.endedSchedulesButton()
+
+    try {
+      // 목록 heading이 먼저 표시되고 Firestore 항목은 뒤늦게 렌더링될 수 있다.
+      await expect
+        .poll(
+          async () =>
+            (await item.count()) > 0 ||
+            (await visibleRows.count()) > 0 ||
+            (await endedSchedulesButton.count()) > 0,
+          { timeout: 5_000 },
+        )
+        .toBe(true)
+    } catch {
+      return false
+    }
+
     await this.scrollScheduleListUntilVisible(item)
     if ((await item.count()) > 0) return true
 
-    const endedSchedulesButton = this.endedSchedulesButton()
     if ((await endedSchedulesButton.count()) === 0) return false
 
     await endedSchedulesButton.click()
@@ -207,6 +235,8 @@ export class HabitSettingsPage {
       this.page.getByRole("button", { name: "삭제", exact: true }).click(),
       dialogPromise,
     ])
+    // dialog 승인만으로 삭제 저장이 끝난 것은 아니므로 목록 복귀까지 기다린다.
+    await this.listHeading.waitFor({ state: "visible" })
 
     return message
   }
@@ -228,22 +258,7 @@ export class HabitSettingsPage {
   }
 
   private async scrollScheduleListUntilVisible(item: Locator): Promise<void> {
-    for (let attempt = 0; attempt < 20; attempt += 1) {
-      if ((await item.count()) > 0) return
-
-      const rows = this.scheduleRows().filter({ visible: true })
-      if ((await rows.count()) === 0) return
-
-      const lastRow = rows.last()
-      const testIdBeforeScroll = await lastRow.getAttribute("data-testid")
-
-      await lastRow.scrollIntoViewIfNeeded()
-      await lastRow.hover()
-
-      if ((await item.count()) > 0) return
-
-      const testIdAfterScroll = await rows.last().getAttribute("data-testid")
-      if (testIdAfterScroll === testIdBeforeScroll) return
-    }
+    const rows = this.scheduleRows().filter({ visible: true })
+    await scrollVirtualizedListUntilRendered(item, rows)
   }
 }

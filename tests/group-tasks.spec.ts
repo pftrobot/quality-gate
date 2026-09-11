@@ -1,28 +1,31 @@
 import { expect } from "@playwright/test"
-import { test as baseTest } from "@/fixtures/pages.fixture"
+import { test as baseTest } from "@/fixtures/group.fixture"
+import type { GroupPage } from "@/pages/GroupPage"
+import type { GroupTaskPage } from "@/pages/GroupTaskPage"
 import { dismissDialogAndGetMessage } from "@/utils/dialogUtils"
-import { deleteGroupIfPresent, uniqueGroupName } from "@/utils/groupTestUtils"
+import { uniqueGroupName } from "@/utils/groupTestUtils"
+
+async function openTaskForm(groupPage: GroupPage, groupTaskPage: GroupTaskPage): Promise<void> {
+  await groupPage.addTaskButton.click()
+  await groupTaskPage.waitForAddFormReady()
+}
 
 const test = baseTest.extend<{ testGroupName: string }>({
   // 모든 그룹 할 일 테스트가 서로 다른 그룹에서 실행되도록 test-scoped Fixture로 유지함
   // auto 옵션으로 테스트 인자에 Fixture를 명시하지 않아도 각 테스트마다 자동 실행된다
   testGroupName: [
-    async ({ groupPage }, use, testInfo) => {
+    async ({ groupCleanup, groupPage }, use, testInfo) => {
       const name = uniqueGroupName("e2e-group-task", testInfo)
+      groupCleanup.registerName(name)
 
       // use() 전: 테스트마다 독립적인 그룹을 만들고 상세 화면까지 준비한다.
       await groupPage.goto()
       await groupPage.createGroup({ name })
       await groupPage.openGroup(name)
 
-      try {
-        await use(name)
-      } finally {
-        // use() 후: 테스트 실패 여부와 관계없이 해당 테스트가 만든 그룹만 정리한다.
-        await deleteGroupIfPresent(groupPage, name)
-      }
+      await use(name)
     },
-    { auto: true },
+    { auto: true, timeout: 60_000 },
   ],
 })
 
@@ -31,7 +34,7 @@ test.describe("그룹 할 일 추가 설정", () => {
     groupPage,
     groupTaskPage,
   }) => {
-    await groupPage.addTaskButton.click()
+    await openTaskForm(groupPage, groupTaskPage)
 
     await expect(groupTaskPage.addHeading).toBeVisible()
     await expect(groupTaskPage.titleInput).toBeEditable()
@@ -51,7 +54,7 @@ test.describe("그룹 할 일 추가 설정", () => {
     groupPage,
     groupTaskPage,
   }) => {
-    await groupPage.addTaskButton.click()
+    await openTaskForm(groupPage, groupTaskPage)
 
     await groupTaskPage.startDateSwitch.click()
     await groupTaskPage.endDateSwitch.click()
@@ -66,7 +69,7 @@ test.describe("그룹 할 일 추가 설정", () => {
     groupPage,
     groupTaskPage,
   }) => {
-    await groupPage.addTaskButton.click()
+    await openTaskForm(groupPage, groupTaskPage)
     await groupTaskPage.colorPickerButton.click()
 
     await expect(groupTaskPage.colorDialog()).toBeVisible()
@@ -83,7 +86,7 @@ test.describe("그룹 할 일 추가 설정", () => {
     groupPage,
     groupTaskPage,
   }) => {
-    await groupPage.addTaskButton.click()
+    await openTaskForm(groupPage, groupTaskPage)
 
     await groupTaskPage.categoryOption("청소").click()
     await groupTaskPage.recurrenceOption("매주").click()
@@ -107,7 +110,7 @@ test.describe("그룹 할 일 추가 설정", () => {
     },
   ]) {
     test(testCase.name, async ({ groupPage, groupTaskPage, page }) => {
-      await groupPage.addTaskButton.click()
+      await openTaskForm(groupPage, groupTaskPage)
       await groupTaskPage.recurrenceOption(testCase.recurrence).click()
 
       const message = await dismissDialogAndGetMessage(page, () => groupTaskPage.saveButton.click())
@@ -122,7 +125,7 @@ test.describe("그룹 할 일 추가 설정", () => {
     groupTaskPage,
     page,
   }) => {
-    await groupPage.addTaskButton.click()
+    await openTaskForm(groupPage, groupTaskPage)
     await groupTaskPage.emojiButton.click()
 
     const emojiPicker = page.getByRole("dialog")
@@ -140,7 +143,7 @@ test.describe("그룹 할 일 추가 설정", () => {
 
 test.describe("그룹 할 일 생성", () => {
   test("제목 없이 저장하면 기본 제목 '할 일'로 생성된다", async ({ groupPage, groupTaskPage }) => {
-    await groupPage.addTaskButton.click()
+    await openTaskForm(groupPage, groupTaskPage)
     await groupTaskPage.createTask()
 
     await expect(groupPage.detailScreen).toBeVisible()
@@ -156,7 +159,7 @@ test.describe("그룹 할 일 생성", () => {
     const title = uniqueGroupName("e2e-task-create", testInfo)
     const memo = "그룹 할 일 생성 테스트 메모"
 
-    await groupPage.addTaskButton.click()
+    await openTaskForm(groupPage, groupTaskPage)
     await groupTaskPage.createTask({ title, memo, category: "청소" })
 
     await expect(groupTaskPage.taskOpenButton(title)).toBeVisible()
@@ -175,7 +178,7 @@ test.describe("그룹 할 일 생성", () => {
   }, testInfo) => {
     const title = uniqueGroupName("e2e-task-daily", testInfo)
 
-    await groupPage.addTaskButton.click()
+    await openTaskForm(groupPage, groupTaskPage)
     await groupTaskPage.titleInput.fill(title)
     await groupTaskPage.recurrenceOption("매일").click()
 
@@ -200,7 +203,7 @@ test.describe("그룹 할 일 수정과 삭제", () => {
     const updatedTitle = `${originalTitle}-updated`
     const updatedMemo = "수정된 할 일 메모"
 
-    await groupPage.addTaskButton.click()
+    await openTaskForm(groupPage, groupTaskPage)
     await groupTaskPage.createTask({ title: originalTitle })
     await groupTaskPage.openTask(originalTitle)
 
@@ -218,7 +221,7 @@ test.describe("그룹 할 일 수정과 삭제", () => {
   }, testInfo) => {
     const title = uniqueGroupName("e2e-task-delete", testInfo)
 
-    await groupPage.addTaskButton.click()
+    await openTaskForm(groupPage, groupTaskPage)
     await groupTaskPage.createTask({ title })
     await groupTaskPage.openTask(title)
 

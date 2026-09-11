@@ -37,10 +37,11 @@ export async function deletePersonalSchedulesIfPresent(
   habitSettingsPage: HabitSettingsPage,
   titles: readonly string[],
 ): Promise<void> {
-  await calendarPage.goto()
-  await openPersonalSchedule(calendarPage, habitSettingsPage)
-
   for (const title of new Set(titles)) {
+    // 이전 항목 삭제 후 유지된 가상 목록 스크롤 위치에 영향을 받지 않도록 매번 목록을 초기화한다.
+    await calendarPage.goto()
+    await openPersonalSchedule(calendarPage, habitSettingsPage)
+
     const item = habitSettingsPage.scheduleItem(title)
     if (!(await habitSettingsPage.revealScheduleInList(title))) continue
 

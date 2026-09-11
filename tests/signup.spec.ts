@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto"
 import { expect, type Page } from "@playwright/test"
-import { test } from "@/fixtures/pages.fixture"
+import { test } from "@/fixtures/account.fixture"
 
 const EXISTING_EMAIL = process.env.TOIT_LOGIN_ID
 const VALID_PASSWORD = "Qa1234!"
@@ -42,50 +42,39 @@ test.beforeEach(async ({ page, loginPage }) => {
 })
 
 test("새 계정으로 회원가입하면 자동 로그인되고 회원 탈퇴할 수 있다", async ({
+  accountCleanup,
   page,
   signUpPage,
   morePage,
 }, testInfo) => {
   const email = `playwright.signup.${randomUUID()}@example.com`
-  let accountDeleted = false
 
   testInfo.annotations.push({ type: "test-account", description: email })
 
-  try {
-    const signUpMessage = await messageFromNextDialog(page, () =>
-      signUpPage.signUp(email, VALID_PASSWORD, VALID_PASSWORD),
-    )
+  const signUpMessage = await messageFromNextDialog(page, () =>
+    signUpPage.signUp(email, VALID_PASSWORD, VALID_PASSWORD),
+  )
 
-    expect(signUpMessage).toContain("회원가입 성공")
-    expect(signUpMessage).toContain("계정이 생성되었습니다.")
+  expect(signUpMessage).toContain("회원가입 성공")
+  expect(signUpMessage).toContain("계정이 생성되었습니다.")
 
-    const calendarTab = page.getByRole("tab", { name: /Calendar$/ })
-    await expect(calendarTab).toBeVisible()
-    await expect(calendarTab).toHaveAttribute("aria-selected", "true")
+  const calendarTab = page.getByRole("tab", { name: /Calendar$/ })
+  await expect(calendarTab).toBeVisible()
+  await expect(calendarTab).toHaveAttribute("aria-selected", "true")
 
-    await morePage.goto()
-    await expect(morePage.emailValue(email)).toBeVisible()
+  await morePage.goto()
+  await expect(morePage.emailValue(email)).toBeVisible()
 
-    const deleteMessage = await messageFromNextDialog(
-      page,
-      () => morePage.deleteAccountButton.click(),
-      "confirm",
-    )
+  const deleteMessage = await messageFromNextDialog(
+    page,
+    () => morePage.deleteAccountButton.click(),
+    "confirm",
+  )
 
-    expect(deleteMessage).toContain("탈퇴 시 모든 프로젝트에서 제거되며")
-    await expect(page.getByRole("heading", { name: "ToIt - Share It", exact: true })).toBeVisible()
-    await expect(page.getByRole("button", { name: "로그인", exact: true })).toBeEnabled()
-    accountDeleted = true
-  } finally {
-    if (!accountDeleted) {
-      try {
-        await morePage.goto()
-        await messageFromNextDialog(page, () => morePage.deleteAccountButton.click(), "confirm")
-      } catch {
-        // 원래 테스트 실패를 보존하며 계정 정보는 test-account annotation으로 추적한다.
-      }
-    }
-  }
+  expect(deleteMessage).toContain("탈퇴 시 모든 프로젝트에서 제거되며")
+  await expect(page.getByRole("heading", { name: "ToIt - Share It", exact: true })).toBeVisible()
+  await expect(page.getByRole("button", { name: "로그인", exact: true })).toBeEnabled()
+  accountCleanup.markDeletionComplete()
 })
 
 const requiredFieldCases: SignUpInputCase[] = [

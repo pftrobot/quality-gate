@@ -114,6 +114,12 @@ export class GroupTaskPage {
     return this.page.getByRole("textbox", { name, exact: true })
   }
 
+  async waitForAddFormReady(): Promise<void> {
+    await this.addScreen.waitFor({ state: "visible" })
+    // 프로젝트와 생성자 정보 로딩 후에만 표시되므로 비동기 폼 초기화 완료 신호로 사용한다.
+    await this.unassignedOption.waitFor({ state: "visible" })
+  }
+
   async createTask(input: GroupTaskInput = {}): Promise<void> {
     await this.fillTaskForm(input)
     await this.saveButton.click()

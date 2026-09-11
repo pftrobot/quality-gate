@@ -1,3 +1,4 @@
+import { expect } from "@playwright/test"
 import { test as base } from "@/fixtures/pages.fixture"
 import {
   deletePersonalScheduleByTestIdIfPresent,
@@ -22,7 +23,20 @@ type ScheduleTestIdCleanupTarget = {
   testId?: string
 }
 
-export const test = base.extend<{ personalScheduleCleanup: PersonalScheduleCleanup }>({
+type ScheduleCompletionCleanup = {
+  register(input: { title: string; date: Date; initiallyChecked: boolean }): void
+}
+
+type ScheduleCompletionCleanupTarget = {
+  title: string
+  date: Date
+  initiallyChecked: boolean
+}
+
+export const test = base.extend<{
+  personalScheduleCleanup: PersonalScheduleCleanup
+  scheduleCompletionCleanup: ScheduleCompletionCleanup
+}>({
   personalScheduleCleanup: [
     async ({ calendarPage, habitSettingsPage }, use) => {
       const titles = new Set<string>()
@@ -54,6 +68,32 @@ export const test = base.extend<{ personalScheduleCleanup: PersonalScheduleClean
 
         if (titles.size > 0) {
           await deletePersonalSchedulesIfPresent(calendarPage, habitSettingsPage, [...titles])
+        }
+      }
+    },
+    { timeout: 60_000 },
+  ],
+  scheduleCompletionCleanup: [
+    async ({ calendarPage }, use) => {
+      const targets: ScheduleCompletionCleanupTarget[] = []
+
+      try {
+        await use({
+          register({ title, date, initiallyChecked }) {
+            targets.push({ title, date: new Date(date), initiallyChecked })
+          },
+        })
+      } finally {
+        for (const { title, date, initiallyChecked } of targets) {
+          await calendarPage.goto()
+          await calendarPage.navigateToMonth(date)
+          await calendarPage.selectDate(date)
+
+          const checkbox = calendarPage.scheduleCheckbox(title)
+          if ((await checkbox.isChecked()) !== initiallyChecked) {
+            await checkbox.click()
+          }
+          await expect(checkbox).toBeChecked({ checked: initiallyChecked })
         }
       }
     },
