@@ -64,11 +64,17 @@ export class MorePage {
     return dialog.getByRole("button", { name: "취소", exact: true })
   }
 
-  async goto(): Promise<void> {
+  async goto(expectedEmail?: string): Promise<void> {
     await this.page.goto("/")
     await this.moreTab.waitFor({ state: "visible" })
     await this.moreTab.click()
     await this.heading.waitFor({ state: "visible" })
+
+    // 모든 브라우저에서 안정적으로 뜨는 이메일로 계정 정보 로딩 완료를 확인한다.
+    const accountLoadedIndicator = expectedEmail
+      ? this.emailValue(expectedEmail)
+      : this.page.getByText(/^\S+@\S+$/)
+    await accountLoadedIndicator.waitFor({ state: "visible", timeout: 5_000 })
   }
 
   async openFeedback(): Promise<void> {

@@ -27,7 +27,7 @@ async function messageFromNextDialog(
 }
 
 test.beforeEach(async ({ morePage }) => {
-  await morePage.goto()
+  await morePage.goto(LOGIN_EMAIL)
 })
 
 test("더보기 화면에 로그인한 사용자의 이메일이 표시된다", async ({ morePage }) => {
@@ -88,6 +88,20 @@ test("알림 시간 설정을 누르면 미지원 안내 후 기존 상태가 �
 })
 
 test("표시 이름을 입력하지 않고 저장하면 안내 메시지가 표시된다", async ({ morePage, page }) => {
+  // 표시 이름 값이 400ms 간격으로 두 번 연속 같을 때까지 대기
+  let previousValue: string | null = null
+  await expect
+    .poll(
+      async () => {
+        const currentValue = await morePage.displayNameInput.inputValue()
+        const isStable = currentValue === previousValue
+        previousValue = currentValue
+        return isStable
+      },
+      { timeout: 5_000, intervals: [400, 400, 400] },
+    )
+    .toBe(true)
+
   await morePage.displayNameInput.clear()
 
   const message = await messageFromNextDialog(page, () => morePage.saveDisplayNameButton.click())

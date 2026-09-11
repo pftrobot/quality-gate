@@ -62,7 +62,7 @@ test("새 계정으로 회원가입하면 자동 로그인되고 회원 탈퇴�
   await expect(calendarTab).toBeVisible()
   await expect(calendarTab).toHaveAttribute("aria-selected", "true")
 
-  await morePage.goto()
+  await morePage.goto(email)
   await expect(morePage.emailValue(email)).toBeVisible()
 
   const deleteMessage = await messageFromNextDialog(
